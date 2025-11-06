@@ -1,2 +1,3 @@
 # rpion
-Raspberry PI pico ionization chamber
+Raspberry PI pico ionization chamber  
+![Ionization chamber](photo.jpg)  
