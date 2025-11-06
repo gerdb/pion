@@ -60,17 +60,7 @@ void Core1_Main(void)
     
     TM1637_set_brightness(3); // 0..7
     
-    TM1637_display_word("    ", true);sleep_ms(500);
-    TM1637_display_word("   S", true);sleep_ms(TIME_MS_SCROLL);
-    TM1637_display_word("  SE", true);sleep_ms(TIME_MS_SCROLL);
-    TM1637_display_word(" SEB", true);sleep_ms(TIME_MS_SCROLL);
-    TM1637_display_word("SEBU", true);sleep_ms(TIME_MS_SCROLL);
-    TM1637_display_word("EBUL", true);sleep_ms(TIME_MS_SCROLL);
-    TM1637_display_word("BULL", true);sleep_ms(TIME_MS_SCROLL);
-    TM1637_display_word("ULLi", true);sleep_ms(TIME_MS_SCROLL);
-    TM1637_display_word("LLi ", true);sleep_ms(TIME_MS_SCROLL);
-    TM1637_display_word("Li  ", true);sleep_ms(TIME_MS_SCROLL);
-    TM1637_display_word("i   ", true);sleep_ms(TIME_MS_SCROLL);
+    TM1637_display_word("pion", true);sleep_ms(4000);
     TM1637_display_word("    ", true);sleep_ms(1000);
 
     while(1)

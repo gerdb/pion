@@ -30,39 +30,39 @@ include(pico_sdk_import.cmake)
 set (PICO_EXTRAS_PATH ${USERHOME}/.pico-sdk/pico-extras)
 include(pico_extras_import.cmake)
 
-project(rpion C CXX ASM)
+project(pion C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(rpion
+add_executable(pion
         main.c
         copro.c
         PicoTM1637.c
         )
 
 # Generate PIO header
-pico_generate_pio_header(rpion
+pico_generate_pio_header(pion
     ${CMAKE_CURRENT_LIST_DIR}/PicoTM1637.pio
 )
 
 # pull in common dependencies and additional pwm hardware support
-target_link_libraries(rpion
+target_link_libraries(pion
         pico_stdlib
         hardware_adc
         pico_multicore
         hardware_pio
         )
 
-target_compile_definitions(rpion PRIVATE
+target_compile_definitions(pion PRIVATE
         )
 
-pico_enable_stdio_usb(rpion 1)
-pico_enable_stdio_uart(rpion 0)
+pico_enable_stdio_usb(pion 1)
+pico_enable_stdio_uart(pion 0)
 
 # create map/bin/hex file etc.
-pico_add_extra_outputs(rpion)
+pico_add_extra_outputs(pion)
 
 # add url via pico_set_program_url
