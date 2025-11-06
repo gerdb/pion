@@ -205,5 +205,5 @@ void Calc(void)
 
 void Core1_Debug(void)
 {
-    printf("copro\n");
+    //printf("copro\n");
 }

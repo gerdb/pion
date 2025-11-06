@@ -31,7 +31,8 @@ uint16_t adc_result = 0;
 uint32_t adc_result_filt = 0;
 uint32_t adc_result_filtL = 0;
 uint32_t counts = 0;
-uint8_t scope_val = 0;
+uint8_t scope_val_L = 0;
+uint8_t scope_val_H = 0;
 
 int main()
 {
@@ -75,16 +76,20 @@ bool Main_Task (struct repeating_timer *t)
     }
      
     adc_result = adc_read();
-    scope_val = (uint8_t)adc_result;
+    scope_val_L = (uint8_t)(((adc_result     ) & 0x003F));
+    scope_val_H = (uint8_t)(((adc_result >> 6) & 0x003F));
     adc_result_filtL += (adc_result - adc_result_filt);
     adc_result_filt = adc_result_filtL / 128;
 
-    putchar(scope_val);
+    putchar(100);
+    putchar(scope_val_L + 32);
+    putchar(scope_val_H + 32);
+
     return true;
 }
 
 void Main_Debug(void)
 {
-    printf("time_s %d\n", time_s);
-    printf("adc %d\n", adc_result);
+    //printf("time_s %d\n", time_s);
+    //printf("adc %d\n", adc_result);
 }
