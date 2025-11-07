@@ -109,18 +109,15 @@ void Core1_Main(void)
             }
 
             TM1637_display_word("cnt", true);      sleep_ms(TIME_MS_TEXT);
-            if (counts >= 10000)
+            for (int i=0; i< (TIME_MS_VALUE/400); i++)
             {
-                for (int i=0; i< (TIME_MS_VALUE/200); i++)
+                TM1637_display(counts % 10000, false); sleep_ms(200);  
+                if (counts >= 10000)
                 {
-                    TM1637_display(counts % 10000, false);  sleep_ms(200);
-                    TM1637_clear();                         sleep_ms(200);
-                }  
+                    TM1637_clear(); 
+                }
+                sleep_ms(200);
             } 
-            else
-            {
-                TM1637_display(counts, false); sleep_ms(TIME_MS_VALUE);
-            }
 
             TM1637_display_word("bqM3", true);  sleep_ms(TIME_MS_TEXT);
 
@@ -136,7 +133,7 @@ void Core1_Main(void)
             }
             TM1637_display(bqm3_max, false);      sleep_ms(TIME_MS_VALUE_SHORT); 
 
-            TM1637_clear(); sleep_ms(1000);
+            
         }
     }
 }

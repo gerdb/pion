@@ -81,8 +81,8 @@ bool Main_Task (struct repeating_timer *t)
     adc_result_filtL += (adc_result - adc_result_filt);
     adc_result_filt = adc_result_filtL / 128;
 
-    putchar(100);
-    putchar(scope_val_L + 32);
+    //putchar(100);
+    putchar(scope_val_L + 32 + 128);
     putchar(scope_val_H + 32);
 
     return true;
