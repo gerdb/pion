@@ -35,28 +35,43 @@ project(pion C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# Add executable. Default name is the project name, version 0.1
+# add a compilation subdirectory
+add_subdirectory(lib/Config)
+add_subdirectory(lib/e-Paper)
+add_subdirectory(lib/Fonts)
+add_subdirectory(lib/GUI)
+add_subdirectory(pics)
+
+# add a header directory
+include_directories(./lib/Config)
+include_directories(./lib/e-Paper)
+include_directories(./lib/GUI)
+include_directories(./pics)
+
 
 add_executable(pion
         main.c
         copro.c
-        PicoTM1637.c
         )
 
-# Generate PIO header
-pico_generate_pio_header(pion
-    ${CMAKE_CURRENT_LIST_DIR}/PicoTM1637.pio
-)
 
 # pull in common dependencies and additional pwm hardware support
 target_link_libraries(pion
         pico_stdlib
         hardware_adc
+        hardware_pwm
         pico_multicore
         hardware_pio
+        ePaper
+        GUI
+        Fonts
+        Config
+        pics
+        hardware_spi
         )
 
 target_compile_definitions(pion PRIVATE
+        DEBUG
         )
 
 pico_enable_stdio_usb(pion 1)

@@ -43,6 +43,13 @@
         "adc.h": "c",
         "multicore.h": "c",
         "copro.h": "c",
-        "irq.h": "c"
+        "irq.h": "c",
+        "hal_usb.h": "c",
+        "stdio.h": "c",
+        "segger_rtt.h": "c",
+        "cstdio": "c",
+        "math.h": "c",
+        "numeric": "c",
+        "cstdint": "c"
     }
 }
