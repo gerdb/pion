@@ -27,24 +27,29 @@
 
 uint32_t time_x = 0;
 uint32_t time_100us = 0;
-uint32_t time_s = 0;
+volatile uint32_t time_s = 0;
 uint32_t time_s_old = 0;
 uint16_t adc_result = 0;
+volatile uint32_t adc_level = 0;
+volatile uint32_t mv_inc = 100;
+
 uint32_t adc_result_filt = 0;
 uint32_t adc_result_filtL = 0;
-uint32_t counts = 0;
+volatile bool update = false;
+volatile uint32_t counts = 0;
 uint8_t scope_val_L = 0;
 uint8_t scope_val_H = 0;
 bool scope_active = false;
+uint32_t mux = 0;
+uint32_t mux_val = 0;
 
 volatile bool goertzel_active = false;
 volatile bool goertzel_calc = false;
 bool goertzel_display = false;
 uint32_t discharge_cnt = 0;
 bool is_charge = false;
-bool charge_discharge_cmd = false;
+volatile bool charge_discharge_cmd = true;
 uint32_t goertzel_n = 0;
-uint16_t samples[10000];
 uint slice_num;
 void on_pwm_wrap();
 bool output_adc = false;
@@ -55,7 +60,7 @@ const float SAMPLE_RATE = 10000.0;   // sample frequency
 float fx = 0.0f;
 
 const int N = 10000;                 // window length
-float goertzel_result = 0.0f;
+volatile float goertzel_result = 0.0f;
 int k=0;
 float omega = 0.0f;
 float cw = 0.0f;
@@ -64,7 +69,10 @@ float z1 = 0.0;
 float z2 = 0.0;
 float s = 0.0;
     
-void Gortzel_Calc(float frq);
+void Gortzel_Prepare(float frq);
+void Gortzel_Start(void);
+void Gortzel_Result(void);
+
 
 int main()
 {
@@ -92,6 +100,8 @@ int main()
     // Select ADC input 3 (GPIO29)
     adc_select_input(3);
     
+    Gortzel_Prepare(50.0f);
+    Gortzel_Start();
 
     // Tell the HV pin that the PWM is in charge of its value.
     gpio_set_function(HV_PWM, GPIO_FUNC_PWM);
@@ -138,28 +148,7 @@ int main()
 
         if (goertzel_calc)
         {
-            /*
-            if (goertzel_display)
-            {
-                for (int i=0;i<10000;i++)
-                {
-                    samples[i] =2048 + 10.0f * sinf((2.0f*M_PI*(float)i*50.0f)/((float)10000)) / ADC_2_MV;
-                }
-                
-
-                for (fx = 10.0f; fx <= 90.0f; fx += 1.0f ) //215
-                {
-                    Gortzel_Calc(fx);
-                }
-            }
-            else
-            {
-                Gortzel_Calc(50.0f);
-            }
-            */
-            Gortzel_Calc(50.0f);
-
-
+            Gortzel_Result();
         }
 
         if (tud_cdc_connected)
@@ -237,12 +226,10 @@ void on_pwm_wrap()
     {
         time_x = 0;
         time_s ++;
-        //counts = time_s * 10 * time_s;
-        counts ++;
     }
      
     adc_result = adc_read();
-
+    adc_level = adc_result;
 
 
     if (adc_result > 2800 || charge_discharge_cmd)
@@ -250,6 +237,8 @@ void on_pwm_wrap()
         charge_discharge_cmd = false;
         adc_result = 0;
         discharge_cnt = DISCHARGE_TIME;
+        update = true;
+        printf("DISC\n");
     }
     
     if (discharge_cnt > 0)
@@ -282,7 +271,10 @@ void on_pwm_wrap()
 
     if (goertzel_active)
     {
-        samples[goertzel_n] = adc_result;
+        float win = (0.54f - 0.46f * cosf(2.0f * M_PI * (float)goertzel_n / (float)(N - 1)));
+        s = ((float)adc_result) * win + c * z1 - z2;
+        z2 = z1;
+        z1 = s;
         goertzel_n ++;
         if (goertzel_n >= 10000)
         {
@@ -296,36 +288,54 @@ void on_pwm_wrap()
     {
         putchar(scope_val_L + 32 + 128);
         putchar(scope_val_H + 32);
+        if (mux == 0) mux_val = 42;
+        if (mux == 1) mux_val = goertzel_result*10.f;
+        
+        mux_val |= mux << 10;
+        scope_val_L = (uint8_t)(((mux_val     ) & 0x003F));
+        scope_val_H = (uint8_t)(((mux_val >> 6) & 0x003F));
+        putchar(scope_val_L + 32);
+        putchar(scope_val_H + 32);
+        mux++;
+        if (mux > 1)
+        {
+            mux = 0;
+        }
     }
 }
 
-void Gortzel_Calc(float frq)
+void Gortzel_Prepare(float frq)
 {
     //k = (int)(0.5f + ((N * f) / SAMPLE_RATE)); // Bin-Index
     float fk = (((float)N * frq) / (float)SAMPLE_RATE); // Bin-Index
     omega = (float)((2.0f * M_PI * fk) / N);
     cw = cosf(omega);
     c = 2.0f * cw;
+}
 
-
+void Gortzel_Start(void)
+{
     z1 = 0.0f;
     z2 = 0.0f;
     s = 0.0f;
-     
-    for (int i = 0; i < 10000; i++)
-    {
-        float win = (0.54f - 0.46f * cosf(2.0f * M_PI * (float)i / (float)(N - 1)));
-        s = ((float)samples[i]) * win + c * z1 - z2;
-        z2 = z1;
-        z1 = s;
-    }
+    goertzel_n = 0;
+    goertzel_calc = false;
+    goertzel_active = true;
+}
+
+
+
+void Gortzel_Result(void)
+{
     // Calculate the result
-    goertzel_result = sqrtf(z2 * z2 + z1 * z1 - c*z1 * z2) * 2.0f * 0.000368f * ADC_2_MV;
+    goertzel_result = sqrtf(z2 * z2 + z1 * z1 - c*z1 * z2) * 2.0f * 0.000368f * ADC_2_MV ;
     if (goertzel_display)
     {
-        printf("fk:%f c:%f %fHz:%fmV\r\n",fk,c, frq, goertzel_result);
+        printf("time_s %f\n", time_s);
+        printf("G: %fmV\r\n",goertzel_result);
     }
     goertzel_calc = false;
+    Gortzel_Start();
 }
 
 void Main_Debug(void)

@@ -29,7 +29,6 @@
 #
 ******************************************************************************/
 #include "EPD_2in13_V4.h"
-#include "Debug.h"
 
 /******************************************************************************
 function :	Software reset
@@ -77,7 +76,6 @@ parameter:
 ******************************************************************************/
 void EPD_2in13_V4_ReadBusy(void)
 {
-    Debug("e-Paper busy\r\n");
 	while(1)
 	{	 //=1 BUSY
 		if(DEV_Digital_Read(EPD_BUSY_PIN)==0) 
@@ -85,7 +83,6 @@ void EPD_2in13_V4_ReadBusy(void)
 		DEV_Delay_ms(10);
 	}
 	DEV_Delay_ms(10);
-    Debug("e-Paper busy release\r\n");
 }
 
 /******************************************************************************

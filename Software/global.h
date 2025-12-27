@@ -20,5 +20,6 @@
 #define DISCHARGE       (28)
 
 #define ADC_2_MV    (0.8056640625f) // 3300mV/4096
+#define ADC_2_V     (0.0008056640625f) // 3.3V/4096
 
 #endif
