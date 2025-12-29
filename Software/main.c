@@ -319,7 +319,8 @@ void on_pwm_wrap()
     }
 
     // Discharge request?
-    if (adc_result > 2800 || charge_discharge_cmd)
+    // Cischarge at ADC 3600 = 2.9V
+    if (adc_result > 3600 || charge_discharge_cmd)
     {
         charge_discharge_cmd = false;
         adc_result = 0;
