@@ -24,7 +24,8 @@
 #include "DEV_Config.h"
 #include "GUI_Paint.h"
 #include "EPD_2in13_V4.h"
-#include <stdlib.h> // malloc() free()
+
+#include "img_intro.h"
 #include "img_check.h"
 #include "img_bq.h"
 
@@ -71,10 +72,21 @@ void Core1_Main(void)
 
     // Initialize the LED display
 	
-    sleep_ms(2000); 
+    sleep_ms(1000); 
     UWORD Imagesize = ((EPD_2in13_V4_WIDTH % 8 == 0)? (EPD_2in13_V4_WIDTH / 8 ): (EPD_2in13_V4_WIDTH / 8 + 1)) * EPD_2in13_V4_HEIGHT;
     Paint_NewImage((uint8_t*)BlackImage, EPD_2in13_V4_WIDTH, EPD_2in13_V4_HEIGHT, 90, WHITE);
+    
+    DEV_Module_Init();
+    EPD_2in13_V4_Init();
+    Paint_DrawBitMap(img_intro);
+    EPD_2in13_V4_Display_Base((uint8_t*)BlackImage);
+    EPD_2in13_V4_Sleep();
+    DEV_Delay_ms(2000);//important, at least 2s
+    DEV_Module_Exit();
 
+    sleep_ms(10000);
+    Gortzel_Start();
+    sleep_ms(5000); 
     do
     {
         all_ok = true;
@@ -84,6 +96,12 @@ void Core1_Main(void)
         Paint_DrawString_EN(5,   0, "50Hz",  &Font24, false, BLACK, WHITE);
         Paint_DrawString_EN(85,  0, "level", &Font24, false, BLACK, WHITE);
         Paint_DrawString_EN(178, 0, "rise",  &Font24, false, BLACK, WHITE);
+        
+        // Calculate the result of the Goertzel filter?
+        if (goertzel_calc)
+        {
+            Gortzel_Result();
+        }
 
         // float result of goertzel_result to string
         sprintf(str,"%4.1f", goertzel_result);
@@ -129,7 +147,7 @@ void Core1_Main(void)
         Paint_DrawString_EN(121,  110, "V", &Font12,false, BLACK, WHITE);
 
 
-        int mv_per_min = (int)(mv_inc * ADC_2_MV);
+        int mv_per_min = (int)(adc_inc * ADC_2_MV);
         // millivolts per minute to string
         sprintf(str,"%3d", mv_per_min);
         // valid increment?
@@ -145,6 +163,11 @@ void Core1_Main(void)
         }
         Paint_DrawString_EN(190, 110, "mV/min", &Font12,false, BLACK, WHITE);
 
+        // Start new measurement
+        if (!all_ok)
+        {
+            Gortzel_Start();
+        }
 
         EPD_2in13_V4_Display_Base((uint8_t*)BlackImage);
         EPD_2in13_V4_Sleep();
@@ -153,9 +176,12 @@ void Core1_Main(void)
 
         // Wait 2+8 = 10s for next check
         DEV_Delay_ms(8000);
+
     } while (!all_ok);
     
 
+    // Activate the radon detection
+    detection_active = true;
     while(1)
     {
 
