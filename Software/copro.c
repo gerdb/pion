@@ -28,6 +28,7 @@
 #include "img_intro.h"
 #include "img_check.h"
 #include "img_bq.h"
+#include "img_bq_low_bat.h"
 
 uint32_t bqm3_min = 0;
 uint32_t bqm3 = 0;
@@ -125,11 +126,8 @@ void Core1_Main(void)
 
         Paint_DrawString_EN(36,   110,"mV", &Font12,false, BLACK, WHITE);
 
-
-
-
-
         float volt_level = (float)adc_level * ADC_2_V;
+
         // voltage to string
         sprintf(str,"%0.3f", volt_level);
         // valid level?
@@ -176,7 +174,6 @@ void Core1_Main(void)
 
         // Wait 2+8 = 10s for next check
         DEV_Delay_ms(8000);
-
     } while (!all_ok);
     
 
@@ -190,10 +187,28 @@ void Core1_Main(void)
             Calc();
         }
 
+        float bat_volt_level = (float)adc_bat_volt * ADC_2_V * 7.66666f; // 7.6666 = 10k/1k5
+        bool low_bat = bat_volt_level < 5.500f;
+
         DEV_Module_Init();
         EPD_2in13_V4_Init();
-        Paint_DrawBitMap(img_bq);
 
+        if (low_bat)
+        {
+            Paint_DrawBitMap(img_bq_low_bat);
+        }
+        else
+        {
+            Paint_DrawBitMap(img_bq);
+            if (preliminary)
+            {
+                for (int y=25; y< 90; y+=2)
+                {
+                    Paint_DrawLine(180, y, 249, y, WHITE, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
+                }
+            }
+        }
+        
 
              if (bqm3 >= 10000) Paint_DrawNum( 0, 27, bqm3, &Font32,true, BLACK, WHITE);
         else if (bqm3 >= 1000 ) Paint_DrawNum(32, 27, bqm3, &Font32,true, BLACK, WHITE);
@@ -201,6 +216,14 @@ void Core1_Main(void)
         else if (bqm3 >= 10   ) Paint_DrawNum(16+48, 0, bqm3, &Font48,true, BLACK, WHITE);
         else if (bqm3 >= 1    ) Paint_DrawNum(16+96, 0, bqm3, &Font48,true, BLACK, WHITE);
         else                    Paint_DrawString_EN(16, 27, "wait", &Font32,true, BLACK, WHITE);
+
+        int ramp_per_day = 0;
+        if (time_meas_latch_s != 0 && bqm3 != 0)
+        {
+            ramp_per_day = 86400 / time_meas_latch_s;   
+        }
+
+        Paint_DrawNum(187, 94,ramp_per_day, &Font16, false, BLACK, WHITE);
 
         int x1 = bqm3_min /2;
         int x2 = bqm3_max /2;
@@ -236,6 +259,14 @@ void Core1_Main(void)
             Paint_DrawLine(191     , 16+i, 192 + x2, 16+i, BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
         }
 
+        if (low_bat)
+        {
+            // bat voltage to string
+            sprintf(str,"%0.2fV", bat_volt_level);
+            Paint_DrawString_EN(187,  75, str,  &Font16, false, WHITE, BLACK);
+        }
+
+
         EPD_2in13_V4_Display_Base((uint8_t*)BlackImage);
 
         DEV_Delay_ms(1000);
@@ -254,13 +285,15 @@ void Calc(void)
 {
     uint32_t buf_counts;
     uint32_t buf_time_s;
+    uint32_t buf_time_s_total;
 
     // Buffer value from other core
     buf_counts = counts;
     buf_time_s = time_s;
+    buf_time_s_total = time_s_total;
 
-    hours = buf_time_s / 3600;
-    min = (buf_time_s / 60) % 60;
+    hours = buf_time_s_total / 3600;
+    min = (buf_time_s_total / 60) % 60;
 
     if (buf_time_s >= 60)
     {
@@ -281,8 +314,6 @@ void Calc(void)
         }
 
         bqm3_max = bqm3 + inaccuracy;
-
-        
     }
 }
 

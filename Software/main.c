@@ -29,10 +29,16 @@ uint32_t time_x = 0;
 uint32_t time_x_6 = 0;
 uint32_t time_100us = 0;
 volatile uint32_t time_s = 0;
+volatile uint32_t time_s_total = 0;
+uint32_t time_s_tmp = 0;
+volatile uint32_t time_meas_s = 0;
+volatile uint32_t time_meas_latch_s = 0;
 uint16_t adc_result = 0;
 volatile uint32_t adc_level = 0;
+volatile uint32_t adc_bat_volt = 0;
 volatile uint32_t adc_inc = 0;
 uint32_t adc_old = 0;
+volatile bool preliminary = true;
 
 uint32_t filt = 0;
 uint32_t filt_cnt = 0;
@@ -55,6 +61,7 @@ uint32_t adc_result_filt = 0;
 uint32_t adc_result_filtL = 0;
 volatile bool update = false;
 volatile uint32_t counts = 0;
+uint32_t counts_tmp = 0;
 volatile int32_t scopeval = 0;
 uint8_t scope_val_L = 0;
 uint8_t scope_val_H = 0;
@@ -104,15 +111,6 @@ int main()
     // Start the 2nd core
     multicore_launch_core1(Core1_Main);
 
-    gpio_init(DISCHARGE);
-    //gpio_set_dir(DISCHARGE, GPIO_IN);
-    gpio_set_pulls(DISCHARGE, false, false);
-    //adc_gpio_init(DISCHARGE);
-
-    gpio_init(DISCHARGE);
-    gpio_set_dir(DISCHARGE, GPIO_OUT);
-    gpio_put(DISCHARGE, 0);
-
     gpio_init(PIEZO);
     gpio_set_dir(PIEZO, GPIO_OUT);
     gpio_put(PIEZO, 0);
@@ -122,8 +120,10 @@ int main()
     adc_init();
     // Make sure GPIO is high-impedance, no pullups etc
     adc_gpio_init(SENSOR);
+    // Make sure GPIO is high-impedance, no pullups etc
+    adc_gpio_init(BAT_VOLT);
     // Select ADC input 3 (GPIO29)
-    adc_select_input(3);
+    adc_select_input(ADC_SENSOR);
     
     Gortzel_Prepare(50.0f);
     Gortzel_Start();
@@ -152,8 +152,8 @@ int main()
     // Load the configuration into our PWM slice, and set it running.
     pwm_init(slice_num, &config, true);
 
-    pwm_set_gpio_level(HV_PWM, 0);//config.top / 2); // 50% PWM
-
+    pwm_set_gpio_level(HV_PWM, 500); // 50% PWM
+    //pwm_set_gpio_level(HV_PWM, 0);              // 0% PWM
 
 
     // Endless loop
@@ -245,7 +245,7 @@ int main()
                 )
                 {
                     piezo = true;
-                    counts ++;
+                    counts_tmp ++;
                 }
 
             }
@@ -277,6 +277,7 @@ void on_pwm_wrap()
     {
         time_x = 0;
         time_x_6 ++;
+        time_meas_s ++;
         if (time_x_6 >= 6)
         {
             time_x_6 = 0;
@@ -292,8 +293,9 @@ void on_pwm_wrap()
         }
         else
         {
-            time_s ++;
+            time_s_tmp ++;
         }
+        time_s_total ++;
     }
      
     adc_result = adc_read();
@@ -319,18 +321,34 @@ void on_pwm_wrap()
     }
 
     // Discharge request?
-    // Cischarge at ADC 3600 = 2.9V
-    if (adc_result > 3600 || charge_discharge_cmd)
+    // Cischarge at ADC 2800 = 2.2V
+    if (adc_result > 2800 || charge_discharge_cmd)
     {
         charge_discharge_cmd = false;
         adc_result = 0;
         discharge_cnt = DISCHARGE_TIME;
         update = true;
         suppress_pulse_cnt = 10;
+        time_meas_latch_s = time_meas_s;
+        time_meas_s = 0;
+        counts = counts_tmp;
+        time_s = time_s_tmp;
+        if (time_s_total > (3600*3)) // 3h
+        {
+            preliminary = false;
+        }
+        if (preliminary)
+        {
+            counts_tmp = 0;
+            time_s_tmp = 0;
+        }
     }
     
     if (discharge_cnt > 0)
     {
+        if (discharge_cnt == 3) adc_select_input(ADC_BAT_VOLT);
+        if (discharge_cnt == 2) adc_bat_volt = adc_level;
+        if (discharge_cnt == 1) adc_select_input(ADC_SENSOR);
         discharge_cnt --;
         gpio_init(SENSOR);
         gpio_set_dir(SENSOR, GPIO_OUT);
